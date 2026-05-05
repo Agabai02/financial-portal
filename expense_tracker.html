@@ -1,0 +1,1301 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>💰 Cloud Financial Portal</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js"></script>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: linear-gradient(135deg, #fce7f3 0%, #f3e8ff 100%);
+      color: #333;
+      min-height: 100vh;
+    }
+    .container { max-width: 900px; margin: 0 auto; padding: 1rem; }
+    .header { text-align: center; margin-bottom: 1.5rem; }
+    .header h1 { font-size: 26px; color: #7c2d12; margin-bottom: 0.25rem; }
+    .header p { font-size: 12px; color: #a855a8; }
+    .sync-badge { position: fixed; top: 1rem; right: 1rem; background: white; padding: 0.75rem 1rem; border-radius: 8px; font-size: 12px; box-shadow: 0 2px 8px rgba(236, 72, 153, 0.1); border-left: 3px solid #34c759; z-index: 100; }
+    .sync-badge.syncing { border-left-color: #f59e0b; }
+    .sync-badge.error { border-left-color: #dc2626; }
+    .tabs { display: flex; gap: 0.5rem; margin-bottom: 1.5rem; background: white; padding: 0.5rem; border-radius: 12px; box-shadow: 0 2px 8px rgba(236, 72, 153, 0.1); overflow-x: auto; flex-wrap: wrap; }
+    .tab-btn { flex: 1; padding: 10px; background: transparent; border: none; border-radius: 8px; cursor: pointer; font-size: 12px; font-weight: 600; color: #a855a8; white-space: nowrap; min-width: 60px; }
+    .tab-btn.active { background: linear-gradient(135deg, #ec4899 0%, #a855a8 100%); color: white; }
+    .tab-content { display: none; }
+    .tab-content.active { display: block; }
+    h2 { font-size: 18px; margin-bottom: 1rem; color: #7c2d12; font-weight: 700; }
+    .section { background: white; padding: 1.25rem; border-radius: 12px; margin-bottom: 1rem; box-shadow: 0 2px 8px rgba(236, 72, 153, 0.15); border: 1px solid #fbcfe8; }
+    .input-group { display: flex; gap: 8px; margin-bottom: 1rem; flex-wrap: wrap; }
+    .input-group input, .input-group select { padding: 12px; border: 1.5px solid #fbcfe8; border-radius: 8px; font-size: 14px; background: #fef2f8; flex: 1; min-width: 100px; }
+    .input-group input:focus, .input-group select:focus { outline: none; border-color: #ec4899; background: white; box-shadow: 0 0 0 3px rgba(236, 72, 153, 0.1); }
+    .btn { padding: 12px 20px; background: linear-gradient(135deg, #ec4899 0%, #a855a8 100%); color: white; border: none; border-radius: 8px; font-weight: 600; cursor: pointer; }
+    .stat-card { background: white; padding: 1rem; border-radius: 12px; box-shadow: 0 2px 8px rgba(236, 72, 153, 0.1); border: 1px solid #fbcfe8; }
+    .stat-label { font-size: 12px; color: #a855a8; margin-bottom: 0.5rem; text-transform: uppercase; font-weight: 600; }
+    .stat-value { font-size: 24px; font-weight: bold; color: #7c2d12; }
+    .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 1rem; margin-bottom: 1.5rem; }
+    .expandable { background: white; padding: 1rem; border-radius: 8px; margin-bottom: 0.75rem; border-left: 3px solid #ec4899; cursor: pointer; }
+    .expandable:hover { background: #fef2f8; }
+    .expandable-header { display: flex; justify-content: space-between; align-items: center; font-weight: 600; color: #7c2d12; }
+    .expandable-arrow { display: inline-block; transition: transform 0.3s; margin-left: 0.5rem; }
+    .expandable.active .expandable-arrow { transform: rotate(180deg); }
+    .expandable-content { display: none; padding-top: 1rem; border-top: 1px solid #fbcfe8; margin-top: 1rem; }
+    .expandable.active .expandable-content { display: block; }
+    .detail-item { display: flex; justify-content: space-between; align-items: center; padding: 0.75rem 0; border-bottom: 1px solid #fbcfe8; }
+    .health-score { font-size: 48px; font-weight: bold; text-align: center; }
+    .health-score.good { color: #34c759; }
+    .health-score.fair { color: #f59e0b; }
+    .health-score.poor { color: #dc2626; }
+    .health-bar { background: #fbcfe8; border-radius: 8px; height: 12px; overflow: hidden; margin-bottom: 0.75rem; }
+    .health-bar-fill { height: 100%; background: #34c759; }
+    .health-bar-fill.fair { background: #f59e0b; }
+    .health-bar-fill.poor { background: #dc2626; }
+    .btn-delete { padding: 4px 8px; background: #dc2626; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 11px; }
+    .empty-state { text-align: center; padding: 2rem 1rem; color: #a855a8; }
+    .cloud-info { background: #fef2f8; padding: 1rem; border-radius: 8px; border-left: 3px solid #34c759; margin-bottom: 1rem; }
+    @media (max-width: 600px) {
+      .container { padding: 0.75rem; }
+      .header h1 { font-size: 22px; }
+      .tabs { font-size: 10px; }
+      .stats-grid { grid-template-columns: 1fr; }
+      .sync-badge { top: 0.5rem; right: 0.5rem; font-size: 11px; padding: 0.5rem 0.75rem; }
+    }
+  </style>
+</head>
+<body>
+  <div class="sync-badge" id="syncBadge">✓ Cloud Ready</div>
+
+  <div class="container">
+    <div class="header">
+      <h1>💰 Cloud Financial Portal</h1>
+      <p>Sync across phone, laptop, tablet • Always updated</p>
+    </div>
+
+    <div class="tabs">
+      <button class="tab-btn active" onclick="switchTab('overview')">Overview</button>
+      <button class="tab-btn" onclick="switchTab('savings')">Savings</button>
+      <button class="tab-btn" onclick="switchTab('health')">Health</button>
+      <button class="tab-btn" onclick="switchTab('reports')">Reports</button>
+      <button class="tab-btn" onclick="switchTab('expenses')">Expenses</button>
+      <button class="tab-btn" onclick="switchTab('income')">Income</button>
+      <button class="tab-btn" onclick="switchTab('debts')">Debts</button>
+      <button class="tab-btn" onclick="switchTab('settings')">Settings</button>
+      <button class="tab-btn" onclick="switchTab('cloud')">Cloud</button>
+    </div>
+
+    <!-- ===== OVERVIEW ===== -->
+    <div id="overview" class="tab-content active">
+      <h2>📊 Overview</h2>
+      
+      <div class="section">
+        <h2 style="margin: 0 0 1rem 0; font-size: 16px;">Add Expense</h2>
+        <div class="input-group">
+          <input type="date" id="expenseDate">
+          <input type="number" id="expenseAmount" placeholder="Amount" step="0.01" min="0">
+          <select id="expenseCategory">
+            <option value="">Category</option>
+            <option value="Rent">Rent</option>
+            <option value="Food">Food</option>
+            <option value="Transport">Transport</option>
+            <option value="Entertainment">Entertainment</option>
+            <option value="Healthcare">Healthcare</option>
+            <option value="Shopping">Shopping</option>
+            <option value="Insurance">Insurance</option>
+            <option value="Utilities">Utilities</option>
+            <option value="Vacation">Vacation</option>
+            <option value="Other">Other</option>
+          </select>
+          <button onclick="addExpense()" class="btn">Add</button>
+        </div>
+      </div>
+
+      <div class="stats-grid">
+        <div class="stat-card">
+          <div class="stat-label">This Month</div>
+          <div class="stat-value" id="monthTotal">€0</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">Monthly Salary</div>
+          <div class="stat-value" id="monthlySalary">€0</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">Remaining</div>
+          <div class="stat-value" id="monthlyRemaining">€0</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">Savings Rate</div>
+          <div class="stat-value" id="savingsRate">0%</div>
+        </div>
+      </div>
+
+      <div id="overviewExpenses"></div>
+    </div>
+
+    <!-- ===== SAVINGS ===== -->
+    <div id="savings" class="tab-content">
+      <h2>💎 Savings & Emergency Fund</h2>
+      
+      <div class="section">
+        <h2 style="margin: 0 0 1rem 0; font-size: 16px;">Emergency Fund</h2>
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1rem;">
+          <div>
+            <label style="font-size: 12px; color: #a855a8; font-weight: 600;">Target (€)</label>
+            <input type="number" id="emergencyTarget" placeholder="e.g., 6000" step="100" min="0" style="width: 100%; padding: 10px; border: 1.5px solid #fbcfe8; border-radius: 8px; background: #fef2f8;">
+          </div>
+          <div>
+            <label style="font-size: 12px; color: #a855a8; font-weight: 600;">Saved (€)</label>
+            <input type="number" id="emergencySaved" placeholder="e.g., 2000" step="100" min="0" style="width: 100%; padding: 10px; border: 1.5px solid #fbcfe8; border-radius: 8px; background: #fef2f8;">
+          </div>
+        </div>
+        <button onclick="updateEmergencyFund()" class="btn" style="width: 100%;">Update Emergency Fund</button>
+      </div>
+
+      <div id="emergencyDisplay"></div>
+
+      <div class="section">
+        <h2 style="margin: 0 0 1rem 0; font-size: 16px;">Savings Goals</h2>
+        <div class="input-group">
+          <input type="text" id="goalName" placeholder="Goal name (e.g., Vacation)">
+          <input type="number" id="goalTarget" placeholder="Target €" step="10" min="0">
+          <input type="number" id="goalSaved" placeholder="Saved €" step="10" min="0">
+          <input type="number" id="goalMonthly" placeholder="Monthly savings €" step="10" min="0">
+          <button onclick="addSavingsGoal()" class="btn">Add</button>
+        </div>
+      </div>
+
+      <div id="goalsList"></div>
+    </div>
+
+    <!-- ===== HEALTH ===== -->
+    <div id="health" class="tab-content">
+      <h2>💚 Financial Health Score</h2>
+      
+      <div class="section">
+        <div style="text-align: center; margin-bottom: 2rem;">
+          <div style="font-size: 14px; color: #a855a8; margin-bottom: 0.5rem; text-transform: uppercase; font-weight: 600;">Health Score</div>
+          <div id="healthScore" class="health-score good">0</div>
+          <div id="healthStatus" style="font-size: 14px; color: #a855a8; margin-top: 0.5rem;"></div>
+        </div>
+      </div>
+
+      <div class="section">
+        <h2 style="margin: 0 0 1rem 0; font-size: 16px;">Score Breakdown</h2>
+        <div id="healthBreakdown"></div>
+      </div>
+
+      <div class="section">
+        <h2 style="margin: 0 0 1rem 0; font-size: 16px;">Budget Health by Category</h2>
+        <div class="input-group">
+          <input type="number" id="budgetAmount" placeholder="Budget amount" step="10" min="0">
+          <select id="budgetCategory">
+            <option value="">Select category</option>
+            <option value="Rent">Rent</option>
+            <option value="Food">Food</option>
+            <option value="Transport">Transport</option>
+            <option value="Entertainment">Entertainment</option>
+            <option value="Healthcare">Healthcare</option>
+            <option value="Shopping">Shopping</option>
+            <option value="Insurance">Insurance</option>
+            <option value="Utilities">Utilities</option>
+          </select>
+          <button onclick="setBudget()" class="btn">Set</button>
+        </div>
+        <div id="categoryBudgets"></div>
+      </div>
+    </div>
+
+    <!-- ===== REPORTS ===== -->
+    <div id="reports" class="tab-content">
+      <h2>📋 Monthly Financial Report</h2>
+      
+      <div class="stats-grid">
+        <div class="stat-card">
+          <div class="stat-label">Income</div>
+          <div class="stat-value" id="reportIncome">€0</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">Spent</div>
+          <div class="stat-value" id="reportSpent">€0</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">Saved</div>
+          <div class="stat-value" id="reportSaved">€0</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">Savings Rate</div>
+          <div class="stat-value" id="reportRate">0%</div>
+        </div>
+      </div>
+
+      <div id="reportContent"></div>
+    </div>
+
+    <!-- ===== EXPENSES ===== -->
+    <div id="expenses" class="tab-content">
+      <h2>💳 Expenses (Click to Expand)</h2>
+      <div id="expensesList"></div>
+    </div>
+
+    <!-- ===== INCOME ===== -->
+    <div id="income" class="tab-content">
+      <h2>💵 Income</h2>
+      
+      <div class="section">
+        <h2 style="margin: 0 0 1rem 0; font-size: 16px;">Add Income</h2>
+        <div class="input-group">
+          <input type="date" id="incomeDate">
+          <input type="number" id="incomeAmount" placeholder="Amount" step="0.01" min="0">
+          <select id="incomeType">
+            <option value="Salary">Salary</option>
+            <option value="Gift">Gift</option>
+            <option value="Bonus">Bonus</option>
+            <option value="Refund">Refund</option>
+            <option value="Freelance">Freelance</option>
+            <option value="Investment Returns">Investment Returns</option>
+            <option value="Other">Other</option>
+          </select>
+          <button onclick="addIncome()" class="btn">Add</button>
+        </div>
+      </div>
+
+      <div id="incomeList"></div>
+    </div>
+
+    <!-- ===== DEBTS ===== -->
+    <div id="debts" class="tab-content">
+      <h2>💳 Debts & Money Owed</h2>
+      <div style="background: #fef2f8; padding: 1rem; border-radius: 8px; border-left: 3px solid #34c759; margin-bottom: 1rem; font-size: 13px; color: #a855a8;">
+        <strong style="color: #7c2d12;">Positive (🟢):</strong> People owe YOU money<br>
+        <strong style="color: #7c2d12;">Negative (🔴):</strong> You owe OTHER PEOPLE money
+      </div>
+      
+      <div class="section">
+        <h2 style="margin: 0 0 1rem 0; font-size: 16px;">Add Debt</h2>
+        <div class="input-group">
+          <input type="date" id="debtDate">
+          <input type="text" id="debtName" placeholder="Person name">
+          <select id="debtType">
+            <option value="">Type</option>
+            <option value="you-owe">I owe them</option>
+            <option value="they-owe">They owe me</option>
+          </select>
+          <input type="text" id="debtDescription" placeholder="Description">
+        </div>
+        <div class="input-group">
+          <input type="number" id="debtAmount" placeholder="Amount" step="0.01" min="0">
+          <input type="number" id="debtInterest" placeholder="Interest % p.a" step="0.01" min="0" max="100">
+          <button onclick="addDebt()" class="btn">Add</button>
+        </div>
+      </div>
+
+      <div class="stats-grid">
+        <div class="stat-card">
+          <div class="stat-label">I Owe</div>
+          <div class="stat-value" id="iOweTotal" style="color: #dc2626;">€0</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">They Owe Me</div>
+          <div class="stat-value" id="theyOweTotal" style="color: #34c759;">€0</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">I've Paid</div>
+          <div class="stat-value" id="iPaidTotal">€0</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">They've Paid</div>
+          <div class="stat-value" id="theyPaidTotal">€0</div>
+        </div>
+      </div>
+
+      <div id="debtsList"></div>
+    </div>
+
+    <!-- ===== SETTINGS ===== -->
+    <div id="settings" class="tab-content">
+      <h2>⚙️ Settings</h2>
+      
+      <div class="section">
+        <h2 style="margin: 0 0 1rem 0; font-size: 16px;">Salary History</h2>
+        <div class="input-group">
+          <input type="date" id="salaryDate">
+          <input type="number" id="salaryAmount" placeholder="Monthly salary" step="10" min="0">
+          <button onclick="addSalaryEntry()" class="btn">Add Salary</button>
+        </div>
+        <div id="salaryList"></div>
+      </div>
+    </div>
+
+    <!-- ===== CLOUD ===== -->
+    <div id="cloud" class="tab-content">
+      <h2>☁️ Cloud Sync</h2>
+      
+      <div class="cloud-info">
+        <div style="font-weight: 600; color: #7c2d12; margin-bottom: 0.75rem;">📱 How to Use on Phone:</div>
+        <ol style="color: #a855a8; font-size: 13px; line-height: 1.8; padding-left: 1.5rem;">
+          <li><strong>Save this URL:</strong> Bookmark this page on all your devices</li>
+          <li><strong>Local Storage:</strong> Data syncs within your browser on each device</li>
+          <li><strong>Export & Import:</strong> Use Export/Import to sync between devices</li>
+          <li><strong>Cloud Drive:</strong> Store exports in Google Drive / Dropbox to share</li>
+        </ol>
+      </div>
+
+      <div class="section">
+        <h2 style="margin: 0 0 1rem 0; font-size: 16px;">📥 Export & Import</h2>
+        <div class="input-group" style="flex-direction: column;">
+          <button onclick="exportData()" class="btn" style="width: 100%;">📥 Export Data (Download JSON)</button>
+          <button onclick="document.getElementById('restoreFile').click()" class="btn" style="width: 100%; background: white; border: 1.5px solid #fbcfe8; color: #a855a8; margin-top: 0.75rem;">📤 Import Data (Upload JSON)</button>
+          <input type="file" id="restoreFile" accept=".json" style="display: none;">
+        </div>
+      </div>
+
+      <div class="section">
+        <h2 style="margin: 0 0 1rem 0; font-size: 16px;">🔄 Sync Instructions</h2>
+        <div style="background: #fef2f8; padding: 1rem; border-radius: 8px; color: #a855a8; font-size: 13px; line-height: 1.8;">
+          <div style="font-weight: 600; color: #7c2d12; margin-bottom: 0.75rem;">Laptop → Phone:</div>
+          <ol style="padding-left: 1.5rem; margin-bottom: 1.5rem;">
+            <li>Click "Export Data" on laptop</li>
+            <li>Upload file to Google Drive / Dropbox</li>
+            <li>Open this page on phone</li>
+            <li>Click "Import Data" and select the file</li>
+            <li>✓ All data now on phone!</li>
+          </ol>
+          
+          <div style="font-weight: 600; color: #7c2d12; margin-bottom: 0.75rem;">Phone → Laptop:</div>
+          <ol style="padding-left: 1.5rem;">
+            <li>Click "Export Data" on phone</li>
+            <li>Share file to Google Drive</li>
+            <li>Open this page on laptop</li>
+            <li>Click "Import Data" and select the file</li>
+            <li>✓ All data now on laptop!</li>
+          </ol>
+        </div>
+      </div>
+
+      <div class="section">
+        <h2 style="margin: 0 0 1rem 0; font-size: 16px;">💡 Pro Tips</h2>
+        <ul style="color: #a855a8; font-size: 13px; line-height: 1.8; padding-left: 1.5rem;">
+          <li><strong>Weekly backups:</strong> Export every Sunday to cloud storage</li>
+          <li><strong>Always backup first:</strong> Before making major changes, export</li>
+          <li><strong>Multiple devices:</strong> Keep all devices up to date by importing latest exports</li>
+          <li><strong>Share with family:</strong> Export and share encrypted file via email</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const CURRENCY = '€';
+    let appData = {
+      expenses: [],
+      income: [],
+      debts: [],
+      savingsGoals: [],
+      emergencyFund: { target: 0, saved: 0 },
+      categoryBudgets: {},
+      salary: [],
+      lastUpdated: new Date().toISOString()
+    };
+
+    function loadData() {
+      const stored = localStorage.getItem('financialPortalData');
+      if (stored) {
+        try {
+          appData = JSON.parse(stored);
+        } catch (e) {
+          console.log('Invalid stored data, starting fresh');
+        }
+      }
+    }
+
+    function saveData() {
+      appData.lastUpdated = new Date().toISOString();
+      localStorage.setItem('financialPortalData', JSON.stringify(appData));
+      updateSyncStatus();
+    }
+
+    function updateSyncStatus() {
+      const badge = document.getElementById('syncBadge');
+      badge.textContent = '✓ Synced';
+      badge.className = 'sync-badge';
+      setTimeout(() => {
+        badge.textContent = '✓ Cloud Ready';
+        badge.className = 'sync-badge';
+      }, 1500);
+    }
+
+    function sym() { return CURRENCY; }
+
+    function switchTab(tabName) {
+      document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
+      document.querySelectorAll('.tab-btn').forEach(el => el.classList.remove('active'));
+      document.getElementById(tabName).classList.add('active');
+      event.target.classList.add('active');
+      
+      if (tabName === 'expenses') renderExpenses();
+      else if (tabName === 'income') renderIncome();
+      else if (tabName === 'debts') renderDebts();
+      else if (tabName === 'savings') renderSavings();
+      else if (tabName === 'health') { renderHealth(); renderCategoryBudgets(); }
+      else if (tabName === 'reports') renderReport();
+      else if (tabName === 'settings') renderSalaryHistory();
+    }
+
+    // ===== EXPENSES =====
+    function addExpense() {
+      const date = document.getElementById('expenseDate').value || new Date().toISOString().split('T')[0];
+      const amount = parseFloat(document.getElementById('expenseAmount').value);
+      const category = document.getElementById('expenseCategory').value;
+
+      if (!amount || amount <= 0 || !category) {
+        alert('Please fill all fields');
+        return;
+      }
+
+      appData.expenses.push({
+        amount: Math.round(amount * 100) / 100,
+        category,
+        timestamp: new Date(date).toISOString()
+      });
+
+      saveData();
+      document.getElementById('expenseDate').valueAsDate = new Date();
+      document.getElementById('expenseAmount').value = '';
+      document.getElementById('expenseCategory').value = '';
+      render();
+    }
+
+    function deleteExpense(idx) {
+      if (confirm('Delete?')) {
+        appData.expenses.splice(idx, 1);
+        saveData();
+        render();
+      }
+    }
+
+    function renderExpenses() {
+      const thisMonth = new Date().toISOString().substring(0, 7);
+      const grouped = {};
+
+      appData.expenses
+        .filter(e => e.timestamp.substring(0, 7) === thisMonth)
+        .forEach(e => {
+          if (!grouped[e.category]) grouped[e.category] = [];
+          grouped[e.category].push(e);
+        });
+
+      let html = '';
+      Object.entries(grouped)
+        .sort((a, b) => {
+          const aTotal = a[1].reduce((sum, e) => sum + e.amount, 0);
+          const bTotal = b[1].reduce((sum, e) => sum + e.amount, 0);
+          return bTotal - aTotal;
+        })
+        .forEach(([category, items]) => {
+          const total = items.reduce((sum, e) => sum + e.amount, 0);
+          const itemsHtml = items
+            .sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp))
+            .map((e, idx) => {
+              const actualIdx = appData.expenses.indexOf(e);
+              return `
+                <div class="detail-item">
+                  <div style="color: #a855a8; font-size: 12px;">${new Date(e.timestamp).toLocaleDateString()}</div>
+                  <div style="text-align: right; display: flex; align-items: center; gap: 0.5rem;">
+                    <div style="font-weight: 600; color: #be185d;">${sym()}${e.amount.toFixed(2)}</div>
+                    <button onclick="deleteExpense(${actualIdx})" class="btn-delete">✕</button>
+                  </div>
+                </div>
+              `;
+            })
+            .join('');
+
+          html += `
+            <div class="expandable" onclick="this.classList.toggle('active')">
+              <div class="expandable-header">
+                <span>${category}<span class="expandable-arrow">▼</span></span>
+                <span style="color: #be185d; font-weight: 600;">${sym()}${total.toFixed(2)}</span>
+              </div>
+              <div class="expandable-content">
+                ${itemsHtml}
+              </div>
+            </div>
+          `;
+        });
+
+      document.getElementById('expensesList').innerHTML = html || '<div class="empty-state">No expenses</div>';
+    }
+
+    // ===== INCOME =====
+    function addIncome() {
+      const date = document.getElementById('incomeDate').value || new Date().toISOString().split('T')[0];
+      const amount = parseFloat(document.getElementById('incomeAmount').value);
+      const type = document.getElementById('incomeType').value;
+
+      if (!amount || amount <= 0) {
+        alert('Please enter amount');
+        return;
+      }
+
+      appData.income.push({
+        amount: Math.round(amount * 100) / 100,
+        type,
+        timestamp: new Date(date).toISOString(),
+        date
+      });
+
+      saveData();
+      document.getElementById('incomeDate').valueAsDate = new Date();
+      document.getElementById('incomeAmount').value = '';
+      renderIncome();
+      render();
+    }
+
+    function deleteIncome(idx) {
+      if (confirm('Delete?')) {
+        appData.income.splice(idx, 1);
+        saveData();
+        renderIncome();
+        render();
+      }
+    }
+
+    function renderIncome() {
+      let html = '';
+      appData.income.slice().reverse().forEach((i, idx) => {
+        const actualIdx = appData.income.length - 1 - idx;
+        html += `
+          <div style="background: white; padding: 1rem; border-radius: 8px; margin-bottom: 0.5rem; border-left: 3px solid #34c759; display: flex; justify-content: space-between; align-items: center;">
+            <div>
+              <div style="font-weight: 600; color: #7c2d12;">${i.type}</div>
+              <div style="font-size: 12px; color: #a855a8;">${i.date}</div>
+            </div>
+            <div style="text-align: right; display: flex; align-items: center; gap: 0.5rem;">
+              <div style="font-weight: 600; color: #34c759;">${sym()}${i.amount.toFixed(2)}</div>
+              <button onclick="deleteIncome(${actualIdx})" class="btn-delete">✕</button>
+            </div>
+          </div>
+        `;
+      });
+
+      document.getElementById('incomeList').innerHTML = html || '<div class="empty-state">No income</div>';
+    }
+
+    // ===== DEBTS =====
+    function addDebt() {
+      const name = document.getElementById('debtName').value;
+      const description = document.getElementById('debtDescription').value || '';
+      const date = document.getElementById('debtDate').value || new Date().toISOString().split('T')[0];
+      const amount = parseFloat(document.getElementById('debtAmount').value);
+      const interestRate = parseFloat(document.getElementById('debtInterest').value) || 0;
+      const type = document.getElementById('debtType').value;
+
+      if (!name || !amount || amount <= 0 || !type) {
+        alert('Please fill all fields');
+        return;
+      }
+
+      appData.debts.push({
+        name,
+        description,
+        date,
+        original: amount,
+        paid: 0,
+        interestRate,
+        type, // "you-owe" or "they-owe"
+        createdDate: new Date(date).toISOString()
+      });
+      saveData();
+
+      document.getElementById('debtName').value = '';
+      document.getElementById('debtDescription').value = '';
+      document.getElementById('debtDate').valueAsDate = new Date();
+      document.getElementById('debtAmount').value = '';
+      document.getElementById('debtInterest').value = '';
+      document.getElementById('debtType').value = '';
+      
+      const typeText = type === 'you-owe' ? 'You owe' : 'They owe you';
+      alert(`✓ Added: ${typeText} ${name} - ${sym()}${amount.toFixed(2)} at ${interestRate}% p.a`);
+      render();
+    }
+
+    function renderDebts() {
+      // Separate debts into two groups
+      const youOweDebts = appData.debts.filter(d => d.type === 'you-owe');
+      const theyOweDebts = appData.debts.filter(d => d.type === 'they-owe');
+
+      const youOweTotal = youOweDebts.reduce((sum, d) => sum + d.original, 0);
+      const youOWePaid = youOweDebts.reduce((sum, d) => sum + d.paid, 0);
+      const theyOweTotal = theyOweDebts.reduce((sum, d) => sum + d.original, 0);
+      const theyOwePaid = theyOweDebts.reduce((sum, d) => sum + d.paid, 0);
+
+      document.getElementById('iOweTotal').textContent = `${sym()}${youOweTotal.toFixed(0)}`;
+      document.getElementById('theyOweTotal').textContent = `${sym()}${theyOweTotal.toFixed(0)}`;
+      document.getElementById('iPaidTotal').textContent = `${sym()}${youOWePaid.toFixed(0)}`;
+      document.getElementById('theyPaidTotal').textContent = `${sym()}${theyOwePaid.toFixed(0)}`;
+
+      let html = '';
+
+      // Section 1: You OWE them
+      if (youOweDebts.length > 0) {
+        html += '<h3 style="color: #dc2626; font-weight: 600; margin: 1.5rem 0 1rem 0;">🔴 I Owe Them</h3>';
+        
+        const youOweGrouped = {};
+        youOweDebts.forEach((debt, idx) => {
+          const normalizedName = debt.name.toLowerCase();
+          if (!youOweGrouped[normalizedName]) youOweGrouped[normalizedName] = [];
+          youOweGrouped[normalizedName].push({ ...debt, idx });
+        });
+
+        Object.entries(youOweGrouped).forEach(([normalizedName, debts]) => {
+          const total = debts.reduce((sum, d) => sum + d.original, 0);
+          const paid = debts.reduce((sum, d) => sum + d.paid, 0);
+          const remaining = total - paid;
+          const percent = (paid / total) * 100;
+          const displayName = debts[0].name;
+
+          const transactionsHtml = debts.map(d => `
+            <div class="detail-item">
+              <div>
+                <div style="color: #7c2d12; font-weight: 500;">${d.date}</div>
+                <div style="color: #a855a8; font-size: 12px;">${d.description || 'Debt'} (${d.interestRate}% p.a)</div>
+              </div>
+              <div style="text-align: right;">
+                <div style="font-weight: 600; color: #be185d;">${sym()}${d.original.toFixed(2)}</div>
+              </div>
+            </div>
+          `).join('');
+
+          html += `
+            <div class="expandable" onclick="this.classList.toggle('active')" style="border-left-color: #dc2626;">
+              <div class="expandable-header">
+                <span>${displayName} <span class="expandable-arrow">▼</span></span>
+                <span style="color: #dc2626; font-weight: 600;">${sym()}${remaining.toFixed(2)}</span>
+              </div>
+              <div style="font-size: 12px; color: #a855a8;">Original: ${sym()}${total.toFixed(2)} | Paid: ${sym()}${paid.toFixed(2)} | ${percent.toFixed(0)}%</div>
+              <div class="health-bar" style="margin-top: 0.5rem;">
+                <div class="health-bar-fill" style="width: ${percent}%; background: #dc2626;"></div>
+              </div>
+              <div class="expandable-content">
+                ${transactionsHtml}
+                <button onclick="updateDebtPayment('${displayName}', 'you-owe')" class="btn" style="width: 100%; margin-top: 1rem; margin-bottom: 0.5rem; background: #dc2626;">💰 Add Payment</button>
+                <button onclick="editDebt('${displayName}', 'you-owe')" class="btn" style="width: 100%; background: #7c3aed; margin-bottom: 0.5rem;">✎ Edit Details</button>
+                <button onclick="deleteAllDebts('${displayName}', 'you-owe')" class="btn-delete" style="width: 100%; background: #dc2626;">🗑️ Delete All</button>
+              </div>
+            </div>
+          `;
+        });
+      }
+
+      // Section 2: They OWE you
+      if (theyOweDebts.length > 0) {
+        html += '<h3 style="color: #34c759; font-weight: 600; margin: 1.5rem 0 1rem 0;">🟢 They Owe Me</h3>';
+        
+        const theyOweGrouped = {};
+        theyOweDebts.forEach((debt, idx) => {
+          const normalizedName = debt.name.toLowerCase();
+          if (!theyOweGrouped[normalizedName]) theyOweGrouped[normalizedName] = [];
+          theyOweGrouped[normalizedName].push({ ...debt, idx });
+        });
+
+        Object.entries(theyOweGrouped).forEach(([normalizedName, debts]) => {
+          const total = debts.reduce((sum, d) => sum + d.original, 0);
+          const paid = debts.reduce((sum, d) => sum + d.paid, 0);
+          const remaining = total - paid;
+          const percent = (paid / total) * 100;
+          const displayName = debts[0].name;
+
+          const transactionsHtml = debts.map(d => `
+            <div class="detail-item">
+              <div>
+                <div style="color: #7c2d12; font-weight: 500;">${d.date}</div>
+                <div style="color: #a855a8; font-size: 12px;">${d.description || 'Loan'} (${d.interestRate}% p.a)</div>
+              </div>
+              <div style="text-align: right;">
+                <div style="font-weight: 600; color: #34c759;">${sym()}${d.original.toFixed(2)}</div>
+              </div>
+            </div>
+          `).join('');
+
+          html += `
+            <div class="expandable" onclick="this.classList.toggle('active')" style="border-left-color: #34c759;">
+              <div class="expandable-header">
+                <span>${displayName} <span class="expandable-arrow">▼</span></span>
+                <span style="color: #34c759; font-weight: 600;">${sym()}${remaining.toFixed(2)}</span>
+              </div>
+              <div style="font-size: 12px; color: #a855a8;">Original: ${sym()}${total.toFixed(2)} | Received: ${sym()}${paid.toFixed(2)} | ${percent.toFixed(0)}%</div>
+              <div class="health-bar" style="margin-top: 0.5rem;">
+                <div class="health-bar-fill" style="width: ${percent}%; background: #34c759;"></div>
+              </div>
+              <div class="expandable-content">
+                ${transactionsHtml}
+                <button onclick="updateDebtPayment('${displayName}', 'they-owe')" class="btn" style="width: 100%; margin-top: 1rem; margin-bottom: 0.5rem;">💰 Add Payment Received</button>
+                <button onclick="editDebt('${displayName}', 'they-owe')" class="btn" style="width: 100%; background: #7c3aed; margin-bottom: 0.5rem;">✎ Edit Details</button>
+                <button onclick="deleteAllDebts('${displayName}', 'they-owe')" class="btn-delete" style="width: 100%; background: #dc2626;">🗑️ Delete All</button>
+              </div>
+            </div>
+          `;
+        });
+      }
+
+      document.getElementById('debtsList').innerHTML = html || '<div class="empty-state">No debts yet</div>';
+    }
+
+    function updateDebtPayment(personName, debtType) {
+      const personDebts = appData.debts.filter(d => d.name === personName && d.type === debtType);
+      if (personDebts.length === 0) return;
+
+      const currentTotal = personDebts.reduce((sum, d) => sum + d.paid, 0);
+      const originalTotal = personDebts.reduce((sum, d) => sum + d.original, 0);
+
+      const typeText = debtType === 'you-owe' ? `you've paid to ${personName}` : `${personName} has paid you`;
+
+      const input = prompt(
+        `Update payment for ${personName}\n\nOriginal: ${sym()}${originalTotal.toFixed(2)}\nAlready paid: ${sym()}${currentTotal.toFixed(2)}\nRemaining: ${sym()}${(originalTotal - currentTotal).toFixed(2)}\n\nEnter NEW total paid:`,
+        currentTotal
+      );
+
+      if (input === null) return;
+
+      const newPaid = parseFloat(input);
+      if (isNaN(newPaid) || newPaid < 0 || newPaid > originalTotal) {
+        alert('Invalid amount');
+        return;
+      }
+
+      personDebts.forEach(d => {
+        d.paid = newPaid * (d.original / originalTotal);
+      });
+
+      saveData();
+      renderDebts();
+    }
+
+    function editDebt(personName, debtType) {
+      const personDebts = appData.debts.filter(d => d.name === personName && d.type === debtType);
+      if (personDebts.length === 0) return;
+
+      const debt = personDebts[0];
+      const totalOriginal = personDebts.reduce((sum, d) => sum + d.original, 0);
+
+      const editOption = prompt(
+        `Edit debt for ${personName}\n\n1 = Change amount\n2 = Change interest rate\n3 = Change description\n4 = Change date\n\nChoose (1-4):`,
+        '1'
+      );
+
+      if (editOption === null) return;
+
+      if (editOption === '1') {
+        const newAmount = prompt(`New amount (current: ${sym()}${totalOriginal.toFixed(2)}):`, totalOriginal);
+        if (newAmount === null) return;
+        const amount = parseFloat(newAmount);
+        if (isNaN(amount) || amount <= 0) {
+          alert('Invalid amount');
+          return;
+        }
+        personDebts.forEach(d => {
+          d.original = amount * (d.original / totalOriginal);
+        });
+      } 
+      else if (editOption === '2') {
+        const newRate = prompt(`New interest rate % (current: ${debt.interestRate}%):`, debt.interestRate);
+        if (newRate === null) return;
+        const rate = parseFloat(newRate);
+        if (isNaN(rate) || rate < 0 || rate > 100) {
+          alert('Invalid rate');
+          return;
+        }
+        personDebts.forEach(d => {
+          d.interestRate = rate;
+        });
+      }
+      else if (editOption === '3') {
+        const newDesc = prompt(`New description (current: "${debt.description || '(none)'}"):`, debt.description || '');
+        if (newDesc === null) return;
+        debt.description = newDesc;
+      }
+      else if (editOption === '4') {
+        const newDate = prompt(`New date (current: ${debt.date}):`, debt.date);
+        if (newDate === null) return;
+        debt.date = newDate;
+      }
+
+      saveData();
+      renderDebts();
+    }
+
+    function deleteAllDebts(personName, debtType) {
+      if (confirm(`Delete ALL debts for ${personName}? This cannot be undone!`)) {
+        appData.debts = appData.debts.filter(d => !(d.name === personName && d.type === debtType));
+        saveData();
+        renderDebts();
+      }
+    }
+
+    // ===== SAVINGS =====
+    function updateEmergencyFund() {
+      const target = parseFloat(document.getElementById('emergencyTarget').value);
+      const saved = parseFloat(document.getElementById('emergencySaved').value) || 0;
+
+      if (!target || target <= 0) {
+        alert('Please enter target');
+        return;
+      }
+
+      appData.emergencyFund = { target, saved };
+      saveData();
+      alert(`✓ Emergency fund set: ${sym()}${saved.toFixed(2)} of ${sym()}${target.toFixed(2)}`);
+      renderSavings();
+    }
+
+    function addSavingsGoal() {
+      const name = document.getElementById('goalName').value;
+      const target = parseFloat(document.getElementById('goalTarget').value);
+      const saved = parseFloat(document.getElementById('goalSaved').value) || 0;
+      const monthly = parseFloat(document.getElementById('goalMonthly').value) || 0;
+
+      if (!name || !target || target <= 0) {
+        alert('Please enter goal name and target');
+        return;
+      }
+
+      appData.savingsGoals.push({ name, target, saved, monthly, createdDate: new Date().toISOString() });
+      saveData();
+      document.getElementById('goalName').value = '';
+      document.getElementById('goalTarget').value = '';
+      document.getElementById('goalSaved').value = '';
+      document.getElementById('goalMonthly').value = '';
+      renderSavings();
+    }
+
+    function deleteSavingsGoal(idx) {
+      if (confirm('Delete goal?')) {
+        appData.savingsGoals.splice(idx, 1);
+        saveData();
+        renderSavings();
+      }
+    }
+
+    function renderSavings() {
+      const { target, saved } = appData.emergencyFund;
+      const percent = target > 0 ? (saved / target) * 100 : 0;
+
+      let emergencyHtml = '';
+      if (target > 0) {
+        emergencyHtml = `
+          <div class="section">
+            <h2 style="margin: 0 0 1rem 0; font-size: 16px;">Emergency Fund Status</h2>
+            <div style="text-align: center; margin-bottom: 1rem;">
+              <div style="font-size: 28px; font-weight: bold; color: #7c2d12;">${sym()}${saved.toFixed(0)} / ${sym()}${target.toFixed(0)}</div>
+              <div style="font-size: 14px; color: #a855a8;">${percent.toFixed(0)}% complete</div>
+            </div>
+            <div class="health-bar">
+              <div class="health-bar-fill" style="width: ${Math.min(percent, 100)}%;"></div>
+            </div>
+            <div style="font-size: 12px; color: #a855a8; text-align: center; margin-top: 0.5rem;">
+              Need ${sym()}${Math.max(target - saved, 0).toFixed(2)} more
+            </div>
+          </div>
+        `;
+      }
+
+      let goalsHtml = '';
+      appData.savingsGoals.forEach((g, idx) => {
+        const goalPercent = (g.saved / g.target) * 100;
+        const monthsLeft = g.monthly > 0 ? Math.ceil((g.target - g.saved) / g.monthly) : 0;
+        
+        goalsHtml += `
+          <div style="background: white; padding: 1rem; border-radius: 8px; margin-bottom: 0.75rem; border-left: 3px solid #34c759;">
+            <div style="display: flex; justify-content: space-between; margin-bottom: 0.5rem;">
+              <div style="font-weight: 600; color: #7c2d12;">${g.name}</div>
+              <div style="color: #34c759; font-weight: 600;">${goalPercent.toFixed(0)}%</div>
+            </div>
+            <div class="health-bar">
+              <div class="health-bar-fill" style="width: ${Math.min(goalPercent, 100)}%;"></div>
+            </div>
+            <div style="font-size: 12px; color: #a855a8; margin-top: 0.5rem;">
+              ${sym()}${g.saved.toFixed(2)} of ${sym()}${g.target.toFixed(2)}
+            </div>
+            <div style="font-size: 12px; color: #7c2d12; font-weight: 600; margin-top: 0.5rem;">
+              Monthly: ${sym()}${(g.monthly || 0).toFixed(2)} ${g.monthly > 0 ? `(${monthsLeft} months left)` : '(Not set)'}
+            </div>
+            <div style="display: flex; gap: 0.5rem; margin-top: 0.75rem;">
+              <button onclick="updateGoalMonthly(${idx})" class="btn-delete" style="background: #7c3aed; flex: 1;">✎ Edit Monthly</button>
+              <button onclick="deleteSavingsGoal(${idx})" class="btn-delete" style="flex: 1;">Delete</button>
+            </div>
+          </div>
+        `;
+      });
+
+      document.getElementById('emergencyDisplay').innerHTML = emergencyHtml;
+      document.getElementById('goalsList').innerHTML = goalsHtml || '<div class="empty-state">No goals yet</div>';
+    }
+
+    function updateGoalMonthly(idx) {
+      const goal = appData.savingsGoals[idx];
+      const newMonthly = prompt(
+        `Update monthly savings for "${goal.name}"\n\nCurrent: ${sym()}${(goal.monthly || 0).toFixed(2)}/month\nTarget: ${sym()}${goal.target.toFixed(2)}\nAlready saved: ${sym()}${goal.saved.toFixed(2)}\n\nEnter new monthly savings:`,
+        (goal.monthly || 0)
+      );
+
+      if (newMonthly === null) return;
+
+      const amount = parseFloat(newMonthly);
+      if (isNaN(amount) || amount < 0) {
+        alert('Please enter valid amount');
+        return;
+      }
+
+      appData.savingsGoals[idx].monthly = amount;
+      saveData();
+      renderSavings();
+    }
+
+    // ===== HEALTH & BUDGETS =====
+    function setBudget() {
+      const category = document.getElementById('budgetCategory').value;
+      const amount = parseFloat(document.getElementById('budgetAmount').value);
+
+      if (!category || !amount || amount <= 0) {
+        alert('Please select category and enter amount');
+        return;
+      }
+
+      appData.categoryBudgets[category] = amount;
+      saveData();
+      document.getElementById('budgetAmount').value = '';
+      document.getElementById('budgetCategory').value = '';
+      renderCategoryBudgets();
+    }
+
+    function renderCategoryBudgets() {
+      const categories = ['Rent', 'Food', 'Transport', 'Entertainment', 'Healthcare', 'Shopping', 'Insurance', 'Utilities'];
+      const thisMonth = new Date().toISOString().substring(0, 7);
+
+      let html = '';
+      categories.forEach(cat => {
+        const budget = appData.categoryBudgets[cat] || 0;
+        const spent = appData.expenses
+          .filter(e => e.category === cat && e.timestamp.substring(0, 7) === thisMonth)
+          .reduce((sum, e) => sum + e.amount, 0);
+
+        const percent = budget > 0 ? (spent / budget) * 100 : 0;
+        let status = 'good';
+        if (percent >= 100) status = 'poor';
+        else if (percent >= 80) status = 'fair';
+
+        const statusText = status === 'good' ? '🟢 GREEN' : status === 'fair' ? '🟡 YELLOW' : '🔴 RED';
+
+        html += `
+          <div style="background: #fef2f8; padding: 1rem; border-radius: 8px; margin-bottom: 0.75rem; border-left: 3px solid #ec4899;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
+              <div style="font-weight: 600; color: #7c2d12;">${cat}</div>
+              <div style="padding: 2px 8px; border-radius: 4px; font-size: 12px; font-weight: 600; background: ${status === 'good' ? '#d1fae5' : status === 'fair' ? '#fef3c7' : '#fee2e2'}; color: ${status === 'good' ? '#065f46' : status === 'fair' ? '#92400e' : '#991b1b'};">${statusText}</div>
+            </div>
+            <div style="font-size: 12px; color: #a855a8;">
+              ${budget > 0 ? `Spent: ${sym()}${spent.toFixed(2)} of ${sym()}${budget.toFixed(2)} (${percent.toFixed(0)}%)` : 'No budget set'}
+            </div>
+          </div>
+        `;
+      });
+
+      document.getElementById('categoryBudgets').innerHTML = html;
+    }
+
+    function renderHealth() {
+      const thisMonth = new Date().toISOString().substring(0, 7);
+      
+      const currentSalary = appData.salary.length > 0 ? appData.salary[appData.salary.length - 1].amount : 0;
+      const monthExpenses = appData.expenses
+        .filter(e => e.timestamp.substring(0, 7) === thisMonth)
+        .reduce((sum, e) => sum + e.amount, 0);
+      const monthIncome = appData.income
+        .filter(i => i.timestamp.substring(0, 7) === thisMonth)
+        .reduce((sum, i) => sum + i.amount, 0);
+      const totalIncome = currentSalary + monthIncome;
+      const savingsAmount = Math.max(totalIncome - monthExpenses, 0);
+      const savingsRatePercent = totalIncome > 0 ? (savingsAmount / totalIncome) * 100 : 0;
+
+      const totalDebt = appData.debts.reduce((sum, d) => sum + d.original, 0);
+      const debtToIncome = totalIncome > 0 ? (totalDebt / totalIncome) : 0;
+
+      const emergencyPercent = appData.emergencyFund.target > 0 ? (appData.emergencyFund.saved / appData.emergencyFund.target) * 100 : 0;
+
+      const budgetHealth = calculateBudgetAdherence();
+
+      const savingsScore = Math.min((savingsRatePercent / 20) * 25, 25);
+      const debtScore = Math.max(25 - (debtToIncome * 25), 0);
+      const emergencyScore = Math.min((emergencyPercent / 100) * 25, 25);
+      const budgetScore = budgetHealth * 0.25;
+      const totalScore = Math.round(savingsScore + debtScore + emergencyScore + budgetScore);
+
+      let status = 'EXCELLENT 🟢';
+      let statusColor = 'good';
+      if (totalScore < 50) {
+        status = 'NEEDS WORK 🔴';
+        statusColor = 'poor';
+      } else if (totalScore < 75) {
+        status = 'GOOD 🟡';
+        statusColor = 'fair';
+      }
+
+      document.getElementById('healthScore').textContent = totalScore;
+      document.getElementById('healthScore').className = `health-score ${statusColor}`;
+      document.getElementById('healthStatus').textContent = status;
+
+      let breakdownHtml = `
+        <div style="display: grid; gap: 1rem;">
+          <div style="background: #fef2f8; padding: 1rem; border-radius: 8px;">
+            <div style="font-weight: 600; color: #7c2d12; margin-bottom: 0.5rem;">Savings Rate (25 pts)</div>
+            <div style="font-size: 28px; font-weight: bold; color: #34c759; margin-bottom: 0.5rem;">${savingsRatePercent.toFixed(0)}%</div>
+            <div class="health-bar">
+              <div class="health-bar-fill" style="width: ${Math.min((savingsRatePercent / 20) * 100, 100)}%;"></div>
+            </div>
+            <div style="font-size: 12px; color: #a855a8; margin-top: 0.5rem;">Target: 20%+ | Score: ${Math.round(savingsScore)}/25</div>
+          </div>
+
+          <div style="background: #fef2f8; padding: 1rem; border-radius: 8px;">
+            <div style="font-weight: 600; color: #7c2d12; margin-bottom: 0.5rem;">Debt-to-Income (25 pts)</div>
+            <div style="font-size: 28px; font-weight: bold; color: ${debtToIncome < 0.5 ? '#34c759' : '#f59e0b'}; margin-bottom: 0.5rem;">${(debtToIncome * 100).toFixed(0)}%</div>
+            <div class="health-bar">
+              <div class="health-bar-fill ${debtToIncome > 0.5 ? 'fair' : ''}" style="width: ${Math.min((1 - debtToIncome) * 100, 100)}%;"></div>
+            </div>
+            <div style="font-size: 12px; color: #a855a8; margin-top: 0.5rem;">Lower is better | Score: ${Math.round(debtScore)}/25</div>
+          </div>
+
+          <div style="background: #fef2f8; padding: 1rem; border-radius: 8px;">
+            <div style="font-weight: 600; color: #7c2d12; margin-bottom: 0.5rem;">Emergency Fund (25 pts)</div>
+            <div style="font-size: 28px; font-weight: bold; color: #34c759; margin-bottom: 0.5rem;">${emergencyPercent.toFixed(0)}%</div>
+            <div class="health-bar">
+              <div class="health-bar-fill" style="width: ${Math.min(emergencyPercent, 100)}%;"></div>
+            </div>
+            <div style="font-size: 12px; color: #a855a8; margin-top: 0.5rem;">Goal: 100% (3-6 months) | Score: ${Math.round(emergencyScore)}/25</div>
+          </div>
+
+          <div style="background: #fef2f8; padding: 1rem; border-radius: 8px;">
+            <div style="font-weight: 600; color: #7c2d12; margin-bottom: 0.5rem;">Budget Adherence (25 pts)</div>
+            <div style="font-size: 28px; font-weight: bold; color: #34c759; margin-bottom: 0.5rem;">${budgetHealth.toFixed(0)}%</div>
+            <div class="health-bar">
+              <div class="health-bar-fill" style="width: ${budgetHealth};"></div>
+            </div>
+            <div style="font-size: 12px; color: #a855a8; margin-top: 0.5rem;">Staying within budgets | Score: ${Math.round(budgetScore)}/25</div>
+          </div>
+        </div>
+      `;
+
+      document.getElementById('healthBreakdown').innerHTML = breakdownHtml;
+    }
+
+    function calculateBudgetAdherence() {
+      const thisMonth = new Date().toISOString().substring(0, 7);
+      const categories = Object.keys(appData.categoryBudgets);
+      
+      if (categories.length === 0) return 100;
+
+      let adherenceSum = 0;
+      categories.forEach(cat => {
+        const budget = appData.categoryBudgets[cat];
+        const spent = appData.expenses
+          .filter(e => e.category === cat && e.timestamp.substring(0, 7) === thisMonth)
+          .reduce((sum, e) => sum + e.amount, 0);
+
+        const percent = (spent / budget) * 100;
+        let categoryAdherence = 100 - Math.max(percent - 100, 0);
+        adherenceSum += categoryAdherence;
+      });
+
+      return Math.max(0, (adherenceSum / categories.length));
+    }
+
+    // ===== REPORTS =====
+    function renderReport() {
+      const thisMonth = new Date().toISOString().substring(0, 7);
+      const currentSalary = appData.salary.length > 0 ? appData.salary[appData.salary.length - 1].amount : 0;
+      const monthExpenses = appData.expenses
+        .filter(e => e.timestamp.substring(0, 7) === thisMonth)
+        .reduce((sum, e) => sum + e.amount, 0);
+      const monthIncome = appData.income
+        .filter(i => i.timestamp.substring(0, 7) === thisMonth)
+        .reduce((sum, i) => sum + i.amount, 0);
+      const totalIncome = currentSalary + monthIncome;
+      const saved = Math.max(totalIncome - monthExpenses, 0);
+      const savingsRate = totalIncome > 0 ? (saved / totalIncome) * 100 : 0;
+
+      document.getElementById('reportIncome').textContent = `${sym()}${totalIncome.toFixed(0)}`;
+      document.getElementById('reportSpent').textContent = `${sym()}${monthExpenses.toFixed(0)}`;
+      document.getElementById('reportSaved').textContent = `${sym()}${saved.toFixed(0)}`;
+      document.getElementById('reportRate').textContent = `${savingsRate.toFixed(0)}%`;
+
+      let statusText = '✓ EXCELLENT - Keep it up!';
+      if (savingsRate < 20) statusText = '⚠️ LOW - Consider reducing spending';
+      else if (savingsRate < 30) statusText = '✓ GOOD - Room for improvement';
+
+      // ONLY count debts YOU OWE (not what others owe you)
+      const debtStatus = appData.debts
+        .filter(d => d.type === 'you-owe')
+        .reduce((sum, d) => sum + d.original, 0);
+
+      let html = `
+        <div class="section">
+          <div style="padding: 1rem; background: #fef2f8; border-radius: 8px; border-left: 4px solid #ec4899;">
+            <div style="font-weight: 600; color: #7c2d12; margin-bottom: 0.5rem;">Monthly Summary</div>
+            <div style="display: grid; gap: 0.75rem; font-size: 14px;">
+              <div style="display: flex; justify-content: space-between;">
+                <span style="color: #a855a8;">Income:</span>
+                <span style="font-weight: 600;">${sym()}${totalIncome.toFixed(2)}</span>
+              </div>
+              <div style="display: flex; justify-content: space-between;">
+                <span style="color: #a855a8;">Spending:</span>
+                <span style="font-weight: 600;">${sym()}${monthExpenses.toFixed(2)} (${(monthExpenses/totalIncome*100).toFixed(0)}%)</span>
+              </div>
+              <div style="display: flex; justify-content: space-between; border-top: 1px solid #fbcfe8; padding-top: 0.5rem; margin-top: 0.5rem;">
+                <span style="color: #a855a8; font-weight: 600;">Savings:</span>
+                <span style="font-weight: 700; color: #34c759;">${sym()}${saved.toFixed(2)} (${savingsRate.toFixed(0)}%)</span>
+              </div>
+            </div>
+            <div style="margin-top: 1rem; padding-top: 1rem; border-top: 1px solid #fbcfe8;">
+              <div style="color: #7c2d12; font-weight: 600;">${statusText}</div>
+            </div>
+          </div>
+
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-top: 1rem;">
+            <div style="padding: 1rem; background: #fef2f8; border-radius: 8px;">
+              <div style="font-size: 12px; color: #a855a8; margin-bottom: 0.5rem; font-weight: 600;">EMERGENCY FUND</div>
+              <div style="font-size: 20px; font-weight: bold; color: #7c2d12;">${(appData.emergencyFund.saved / appData.emergencyFund.target * 100).toFixed(0)}%</div>
+              <div style="font-size: 12px; color: #a855a8; margin-top: 0.25rem;">Goal: ${sym()}${appData.emergencyFund.target.toFixed(0)}</div>
+            </div>
+            <div style="padding: 1rem; background: #fef2f8; border-radius: 8px;">
+              <div style="font-size: 12px; color: #a855a8; margin-bottom: 0.5rem; font-weight: 600;">I OWE (Active Debts)</div>
+              <div style="font-size: 20px; font-weight: bold; color: #dc2626;">${sym()}${debtStatus.toFixed(0)}</div>
+              <div style="font-size: 12px; color: #a855a8; margin-top: 0.25rem;">Need to pay back</div>
+            </div>
+          </div>
+        </div>
+      `;
+
+      document.getElementById('reportContent').innerHTML = html;
+    }
+
+    // ===== SETTINGS =====
+    function addSalaryEntry() {
+      const date = document.getElementById('salaryDate').value;
+      const amount = parseFloat(document.getElementById('salaryAmount').value);
+
+      if (!date || !amount || amount <= 0) {
+        alert('Please enter date and amount');
+        return;
+      }
+
+      appData.salary.push({ date, amount, timestamp: new Date(date).toISOString() });
+      saveData();
+      document.getElementById('salaryDate').value = '';
+      document.getElementById('salaryAmount').value = '';
+      renderSalaryHistory();
+      render();
+    }
+
+    function renderSalaryHistory() {
+      let html = '';
+      appData.salary.slice().reverse().forEach(s => {
+        html += `
+          <div style="background: white; padding: 1rem; border-radius: 8px; margin-bottom: 0.5rem; display: flex; justify-content: space-between;">
+            <div>
+              <div style="font-weight: 600; color: #7c2d12;">${s.date}</div>
+            </div>
+            <div style="font-weight: 600; color: #34c759;">${sym()}${s.amount.toFixed(2)}</div>
+          </div>
+        `;
+      });
+
+      document.getElementById('salaryList').innerHTML = html || '<div class="empty-state">No salary entries</div>';
+    }
+
+    // ===== OVERVIEW =====
+    function render() {
+      const thisMonth = new Date().toISOString().substring(0, 7);
+      const currentSalary = appData.salary.length > 0 ? appData.salary[appData.salary.length - 1].amount : 0;
+      const monthExpenses = appData.expenses
+        .filter(e => e.timestamp.substring(0, 7) === thisMonth)
+        .reduce((sum, e) => sum + e.amount, 0);
+      const monthIncome = appData.income
+        .filter(i => i.timestamp.substring(0, 7) === thisMonth)
+        .reduce((sum, i) => sum + i.amount, 0);
+      const totalIncome = currentSalary + monthIncome;
+      const remaining = totalIncome - monthExpenses;
+      const savingsRatePercent = totalIncome > 0 ? (remaining / totalIncome) * 100 : 0;
+
+      document.getElementById('monthTotal').textContent = `${sym()}${monthExpenses.toFixed(0)}`;
+      document.getElementById('monthlySalary').textContent = `${sym()}${currentSalary.toFixed(0)}`;
+      document.getElementById('monthlyRemaining').textContent = `${sym()}${remaining.toFixed(0)}`;
+      document.getElementById('savingsRate').textContent = `${savingsRatePercent.toFixed(0)}%`;
+
+      const grouped = {};
+      appData.expenses
+        .filter(e => e.timestamp.substring(0, 7) === thisMonth)
+        .forEach(e => {
+          if (!grouped[e.category]) grouped[e.category] = [];
+          grouped[e.category].push(e);
+        });
+
+      let html = '';
+      Object.entries(grouped)
+        .sort((a, b) => {
+          const aTotal = a[1].reduce((sum, e) => sum + e.amount, 0);
+          const bTotal = b[1].reduce((sum, e) => sum + e.amount, 0);
+          return bTotal - aTotal;
+        })
+        .slice(0, 5)
+        .forEach(([category, items]) => {
+          const total = items.reduce((sum, e) => sum + e.amount, 0);
+          html += `
+            <div style="background: white; padding: 1rem; border-radius: 8px; margin-bottom: 0.5rem; border-left: 3px solid #ec4899; display: flex; justify-content: space-between;">
+              <div style="font-weight: 600; color: #7c2d12;">${category}</div>
+              <div style="font-weight: 600; color: #be185d;">${sym()}${total.toFixed(2)}</div>
+            </div>
+          `;
+        });
+
+      document.getElementById('overviewExpenses').innerHTML = html || '<div class="empty-state">No expenses</div>';
+    }
+
+    // ===== BACKUP/EXPORT =====
+    function exportData() {
+      const backup = { date: new Date().toISOString(), data: appData };
+      const blob = new Blob([JSON.stringify(backup, null, 2)], { type: 'application/json' });
+      const link = document.createElement('a');
+      link.href = URL.createObjectURL(blob);
+      link.download = `financial_portal_${new Date().toISOString().split('T')[0]}.json`;
+      link.click();
+    }
+
+    document.getElementById('restoreFile').addEventListener('change', function(e) {
+      const file = e.target.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = function(event) {
+        try {
+          const backup = JSON.parse(event.target.result);
+          if (confirm('Import this data? This will overwrite current data.')) {
+            appData = backup.data;
+            saveData();
+            alert('✓ Data imported!');
+            location.reload();
+          }
+        } catch (err) {
+          alert('Error: ' + err.message);
+        }
+      };
+      reader.readAsText(file);
+    });
+
+    // ===== INIT =====
+    document.getElementById('expenseDate').valueAsDate = new Date();
+    document.getElementById('incomeDate').valueAsDate = new Date();
+    document.getElementById('debtDate').valueAsDate = new Date();
+    document.getElementById('salaryDate').valueAsDate = new Date();
+
+    loadData();
+    render();
+    renderSavings();
+  </script>
+</body>
+</html>
